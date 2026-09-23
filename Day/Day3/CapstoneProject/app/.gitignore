@@ -1,0 +1,104 @@
+# ==========================================
+# FastAPI & Python Core
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==========================================
+# Environments & Package Managers
+# ==========================================
+# Local virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Poetry, Pipenv, and uv tools
+.poetry/
+.pipenv/
+# Note: Keep Poetry.lock or Pipfile.lock, but ignore runtime caches if any
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ==========================================
+# FastAPI Secrets & Configuration
+# ==========================================
+# Critically important: NEVER commit your active environment variables
+.env
+.env.*
+!.env.example
+*.bak
+*.local
+
+# ==========================================
+# Database (SQLAlchemy / Tortoise ORM / etc.)
+# ==========================================
+*.sqlite3
+*.db
+*.db-journal
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ==========================================
+# IDEs & System Files
+# ==========================================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace
+
+# PyCharm / JetBrains
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
