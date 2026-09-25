@@ -2,7 +2,7 @@
 #
 # Purpose:
 #   HTTP endpoints for the Ticket entity — the core entity of this system.
-#   GET    /tickets                  -> list all tickets
+#   GET    /tickets                  -> list all tickets (supports filtering + pagination)
 #   GET    /tickets/{id}             -> read one ticket
 #   POST   /tickets                  -> create a ticket (Employee raises an issue)
 #   PUT    /tickets/{id}             -> update ticket details (title/description/category)
@@ -14,18 +14,20 @@
 # UUID string "id" instead of relying on MongoDB's ObjectId.
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo.collection import Collection
 
 from app.dependencies import (
     get_tickets_collection,
     get_categories_collection,
     get_users_collection,
+    get_audit_logs_collection,
 )
 from app.models.ticket import TicketStatus, is_valid_transition
+from app.models.audit_log import AuditAction, build_audit_log_doc
 from app.schemas.ticket import (
     TicketCreate,
     TicketUpdate,
@@ -43,6 +45,7 @@ def create_ticket(
     tickets_collection: Collection = Depends(get_tickets_collection),
     categories_collection: Collection = Depends(get_categories_collection),
     users_collection: Collection = Depends(get_users_collection),
+    audit_logs_collection: Collection = Depends(get_audit_logs_collection),
 ):
     """
     Create a new ticket.
@@ -75,17 +78,53 @@ def create_ticket(
         "updated_at": now,
     }
     tickets_collection.insert_one(ticket_doc)
+
+    # Record this creation in the audit trail.
+    audit_logs_collection.insert_one(
+        build_audit_log_doc(
+            ticket_id=ticket_doc["id"],
+            action=AuditAction.CREATED,
+            performed_by=payload.created_by,
+            details=f"Ticket created with status '{TicketStatus.NEW.value}'.",
+        )
+    )
     return ticket_doc
 
 
 @router.get("", response_model=List[TicketResponse])
-def list_tickets(tickets_collection: Collection = Depends(get_tickets_collection)):
+def list_tickets(
+    tickets_collection: Collection = Depends(get_tickets_collection),
+    # --- Query parameters: all optional, used to filter/control the request ---
+    status_filter: Optional[TicketStatus] = Query(default=None, alias="status", description="Filter by exact status"),
+    category_id: Optional[str] = Query(default=None, description="Filter by category id"),
+    assigned_to: Optional[str] = Query(default=None, description="Filter by assigned technician's user id"),
+    created_by: Optional[str] = Query(default=None, description="Filter by the employee who raised the ticket"),
+    skip: int = Query(default=0, ge=0, description="Number of tickets to skip (for pagination)"),
+    limit: int = Query(default=20, ge=1, le=100, description="Max number of tickets to return (1-100)"),
+):
     """
-    List all tickets.
+    List tickets, with optional filtering and pagination.
     GET -> read, per REST convention.
-    (Query-parameter filtering, e.g. by status/category, is added in Sub-phase 1.9.)
+
+    Examples:
+      GET /tickets                                -> first 20 tickets
+      GET /tickets?status=in_progress              -> only in-progress tickets
+      GET /tickets?category_id=<id>&limit=50       -> up to 50 tickets in one category
+      GET /tickets?assigned_to=<id>&skip=20&limit=20 -> a technician's tickets, page 2
     """
-    return list(tickets_collection.find())
+    # Build the MongoDB filter dict from whichever query parameters were actually provided.
+    mongo_filter = {}
+    if status_filter is not None:
+        mongo_filter["status"] = status_filter
+    if category_id is not None:
+        mongo_filter["category_id"] = category_id
+    if assigned_to is not None:
+        mongo_filter["assigned_to"] = assigned_to
+    if created_by is not None:
+        mongo_filter["created_by"] = created_by
+
+    cursor = tickets_collection.find(mongo_filter).sort("created_at", -1).skip(skip).limit(limit)
+    return list(cursor)
 
 
 @router.get("/{ticket_id}", response_model=TicketResponse)
@@ -137,6 +176,7 @@ def assign_ticket(
     payload: TicketAssign,
     tickets_collection: Collection = Depends(get_tickets_collection),
     users_collection: Collection = Depends(get_users_collection),
+    audit_logs_collection: Collection = Depends(get_audit_logs_collection),
 ):
     """
     Assign or reassign a technician to a ticket (Team Lead responsibility).
@@ -156,13 +196,32 @@ def assign_ticket(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="assigned_to does not match any existing user.",
         )
+    if not users_collection.find_one({"id": payload.assigned_by}):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="assigned_by does not match any existing user.",
+        )
 
     update_data = {"assigned_to": payload.assigned_to, "updated_at": datetime.utcnow()}
 
-    if existing["status"] == TicketStatus.NEW:
+    status_also_changed = existing["status"] == TicketStatus.NEW
+    if status_also_changed:
         update_data["status"] = TicketStatus.ASSIGNED
 
     tickets_collection.update_one({"id": ticket_id}, {"$set": update_data})
+
+    # Record this assignment in the audit trail.
+    details = f"Assigned to user '{payload.assigned_to}'."
+    if status_also_changed:
+        details += f" Status moved from '{TicketStatus.NEW.value}' to '{TicketStatus.ASSIGNED.value}'."
+    audit_logs_collection.insert_one(
+        build_audit_log_doc(
+            ticket_id=ticket_id,
+            action=AuditAction.ASSIGNED,
+            performed_by=payload.assigned_by,
+            details=details,
+        )
+    )
     return tickets_collection.find_one({"id": ticket_id})
 
 
@@ -171,6 +230,8 @@ def update_ticket_status(
     ticket_id: str,
     payload: TicketStatusUpdate,
     tickets_collection: Collection = Depends(get_tickets_collection),
+    users_collection: Collection = Depends(get_users_collection),
+    audit_logs_collection: Collection = Depends(get_audit_logs_collection),
 ):
     """
     Move a ticket through its lifecycle.
@@ -181,6 +242,12 @@ def update_ticket_status(
     existing = tickets_collection.find_one({"id": ticket_id})
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+
+    if not users_collection.find_one({"id": payload.changed_by}):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="changed_by does not match any existing user.",
+        )
 
     current_status = TicketStatus(existing["status"])
     new_status = payload.status
@@ -194,6 +261,16 @@ def update_ticket_status(
     tickets_collection.update_one(
         {"id": ticket_id},
         {"$set": {"status": new_status, "updated_at": datetime.utcnow()}},
+    )
+
+    # Record this status change in the audit trail.
+    audit_logs_collection.insert_one(
+        build_audit_log_doc(
+            ticket_id=ticket_id,
+            action=AuditAction.STATUS_CHANGED,
+            performed_by=payload.changed_by,
+            details=f"Status changed from '{current_status.value}' to '{new_status.value}'.",
+        )
     )
     return tickets_collection.find_one({"id": ticket_id})
 
