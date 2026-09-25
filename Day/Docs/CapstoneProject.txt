@@ -1,0 +1,31 @@
+CapstoneProject
+
+python -m venv venv
+
+venv\Scripts\activate.bat
+
+#Create Folders and files
+
+pip install -r requirements.txt
+
+cd ..
+
+python -m uvicorn app.main:app --reload
+
+# run "link"/docs on browser
+
+CP 2
+
+# add dependencies file
+
+# after modifiny and addig new fi;es
+
+cd app #going inside app folder where requirements.txt
+
+pip install -r requiremets.txt
+
+cd ..
+
+python -m uvicorn app.main:app --reload
+
+

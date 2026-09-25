@@ -1,0 +1,106 @@
+Git CLoning
+1. Ask the repository owner to add you
+They should go to the GitHub repository:
+
+Settings → Collaborators → Add people
+
+and add your GitHub username.
+
+Once you've accepted the invitation, you can clone the repository.
+
+2. Clone it in VS Code
+Open VS Code.
+
+Press:
+
+Ctrl + Shift + P
+
+Search:
+
+Git: Clone
+
+Paste the repository URL:
+
+https://github.com/OWNER_USERNAME/REPOSITORY_NAME.git
+
+For example:
+
+https://github.com/john/my-project.git
+
+VS Code will ask you where to save it.
+
+Choose something like:
+
+Documents/
+
+VS Code will create:
+
+Documents/
+└── my-project/
+    ├── src/
+    ├── package.json
+    ├── README.md
+    └── ...
+
+Then click Open.
+
+3. Before you start working
+Always get the latest version:
+
+git pull
+
+Then create your own branch:
+
+git checkout -b feature/my-work
+
+For example:
+
+git checkout -b feature/login-page
+
+Now you can modify the project.
+
+4. When you've finished your work
+Check your changes:
+
+git status
+
+Add them:
+
+git add .
+
+Commit them:
+
+git commit -m "Add login page"
+
+Push your branch:
+
+git push -u origin feature/login-page
+
+Then go to GitHub and create a Pull Request.
+
+your branch
+     ↓
+feature/login-page
+     ↓
+   Pull Request
+     ↓
+     main
+
+The repository owner/team can review it and merge it.
+
+Important
+Don't normally do this as a teammate:
+
+git push origin main
+
+Instead, work on your own branch and make a Pull Request. This prevents one person's unfinished changes from directly affecting the shared main branch.
+
+Your normal cycle will be:
+
+git pull
+git checkout -b feature/something
+# make changes
+git add .
+git commit -m "Describe changes"
+git push -u origin feature/something
+# Create Pull Request on GitHub

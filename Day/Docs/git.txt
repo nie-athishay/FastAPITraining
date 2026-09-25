@@ -1,0 +1,19 @@
+git init
+
+git add .
+
+git commit -m "First Commit"
+
+git branch -M main
+
+git remote add origin "repositry Link"
+
+git status
+
+git add .
+
+git commit -m "First Commit"
+
+git push origin main
+
+dir

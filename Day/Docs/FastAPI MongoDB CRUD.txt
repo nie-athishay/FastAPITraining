@@ -1,0 +1,13 @@
+FastAPI MongoDB CRUD
+>Virtual Environment
+
+python -m venv  venv
+
+.\venv\Scripts\activate.bat
+
+pip install fastapi uvicorn pymongo
+
+pip install pymong (D:\Athishay\FastAPITraining\Day\Day2\FastAPIMongo directory not venv)
+
+python -m uvicorn main:app --reload (**on venv, go back that)
+

@@ -1,0 +1,17 @@
+/POST Create user
+Request
+Client(Browser) -> Uvicorn -> FastAPI -> Schema(UserCreate) -> Router(create_user) -> Dependencies(collection to be used) -> Database(Model) -> MongoDB 
+
+
+Response:
+Schema(UserResponse) -> JSON(JavaScript Onject NOtation: data format) -> Client(Browser/Swagger UI)
+
+/Get All Users
+Request:
+Client(Browser) -> Uvicorn -> FastAPI -> Routers(list_user) -> Dependencies(get_users_collection) -> DB (Model) -> MongoDB
+
+
+
+
+When Schema is requuired POST (Create), UPDATE(Modify The Data)
+When Not GET (Read,Delete)
