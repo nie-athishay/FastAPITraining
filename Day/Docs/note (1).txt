@@ -1,0 +1,27 @@
+to create a verchual environment the use this command 
+    venv\Scripts\activate.bat
+
+node -v => to check the version of node js 
+npm -v => to check the vesion of npm
+npm (node packeg manager)
+
+Step 3: ---- Scaffold the vite + React Project ----
+
+npm create vite@latest frontend -- --template react
+
+--- npm usinr vite is bootstrapping boiler plate code(starter code) of  ReactJS Application ---
+
+npm install react@18.3.1 react-dom@18.3.1 react-router-dom@6.26.2 bootstrap@5.3.3  
+
+packeg.json :=> this file keeps track of dependencies (name:) required for the
+Application thet we are going to build
+
+Step 4: 
+    npm run dev
+
+installetions
+    pip install "pydantic[email]"
+    pip install pydantic-settings
+    pip install pymongo
+    
+
